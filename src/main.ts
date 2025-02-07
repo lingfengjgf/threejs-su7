@@ -22,11 +22,11 @@ const cubeCamera = new THREE.CubeCamera(0.1, 100, cubeRendererTarget);
 // 4 cubeRendererTarget对象的texture环境材质的环境贴图通道：envMap
 let ground: any;
 
-const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
-const boxMesh = new THREE.Mesh(boxGeo, boxMat);
-scene.add(boxMesh);
-boxMesh.position.set(0, 3.2, 0);
+// const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+// const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+// const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+// scene.add(boxMesh);
+// boxMesh.position.set(0, 3.2, 0);
 
 // 创建相机
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
