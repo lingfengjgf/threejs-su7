@@ -35,11 +35,17 @@ camera.position.set(0, 1, 5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 
+// 保存场景模型
+const nameToMeshDic: any = { camera };
+
 const gltfLoader = new GLTFLoader();
 gltfLoader.load('car.glb', (gltf) => {
     scene.add(gltf.scene);
 
     gltf.scene.traverse((child: any) => {
+
+        nameToMeshDic[child.name] = child;
+
         if (child.type == "Mesh") {
             child.material.envMap = cubeRendererTarget.texture;
             // child.visible = false;
@@ -49,17 +55,6 @@ gltfLoader.load('car.glb', (gltf) => {
             // child.visible = true;
             ground = child;
         }
-        if (child.name == "flyLight") {
-            // 使隧道远处的飞行粒子清晰
-            child.material.map.anisotropy = 8;
-
-            gsap.to(child.material.map.offset, {
-                x: -1,
-                repeat: -1,
-                ease: 'none',
-                duration: 0.5
-            })
-        }
         if (child.name == "mainCar") {
             // 使车身变亮
             child.traverse((item: any) => {
@@ -68,6 +63,13 @@ gltfLoader.load('car.glb', (gltf) => {
                 }
             })
         }
+        if (child.name == "flyLight") {
+            // 使隧道远处的飞行粒子清晰
+            child.material.map.anisotropy = 8;
+            // 初始状态隧道透明，按下鼠标左键展示隧道粒子
+            child.material.opacity = 0;
+        }
+
     })
 })
 
@@ -76,6 +78,188 @@ rgbeLoader.load('sky.hdr', skyTexture => {
     scene.background = skyTexture;
     scene.environment = skyTexture;
     skyTexture.mapping = THREE.EquirectangularReflectionMapping; // 全景图
+})
+
+window.addEventListener('mousedown', e => {
+    if (e.button == 0) {
+        gsap.to(camera, {
+            fov: 80,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            }
+        })
+
+        // 隧道粒子
+        const flyLight = nameToMeshDic['flyLight'];
+        const flyLightTween = gsap.to(flyLight.material.map.offset, {
+            x: flyLight.material.map.offset.x - 1,
+            repeat: -1,
+            ease: 'none',
+            duration: 0.5
+        })
+        flyLight.userData['tween'] = flyLightTween;
+
+        // 隧道粒子渐显
+        const opacityTween = gsap.to(flyLight.material, {
+            opacity: 1,
+            repeat: 0,
+            ease: 'none',
+            duration: 0.5
+        })
+        flyLight.userData['opacityTween'] = opacityTween;
+
+        // 前车轮滚动
+        const wheelFront = nameToMeshDic['wheelFront'];
+        const wheelFrontStartTween = gsap.to(wheelFront.rotation, {
+            y: wheelFront.rotation.y + 4 * Math.PI,
+            repeat: 0,
+            duration: 1,
+            ease: 'power1.in',
+            onComplete: () => {
+                const wheelFrontTween = gsap.to(wheelFront.rotation, {
+                    y: wheelFront.rotation.y + 2 * Math.PI,
+                    repeat: -1,
+                    ease: 'none',
+                    duration: 0.3
+                })
+                wheelFront.userData['tween'] = wheelFrontTween;
+
+                // 车身抖动效果
+                const shakeXTween = gsap.to(camera.position, {
+                    x: camera.position.x + 0.01,
+                    repeat: -1,
+                    ease: 'power1.inOut',
+                    duration: 0.1
+                })
+                nameToMeshDic['camera'].userData['shakeXTween'] = shakeXTween;
+                const shakeYTween = gsap.to(camera.position, {
+                    y: camera.position.y + 0.01,
+                    repeat: -1,
+                    ease: 'power1.inOut',
+                    duration: 0.15
+                })
+                nameToMeshDic['camera'].userData['shakeYTween'] = shakeYTween;
+            }
+        })
+        wheelFront.userData['startTween'] = wheelFrontStartTween;
+
+        // 后车轮滚动
+        const wheelBack = nameToMeshDic['wheelBack'];
+        const wheelBackStartTween = gsap.to(wheelBack.rotation, {
+            y: wheelFront.rotation.y + 4 * Math.PI,
+            repeat: 0,
+            duration: 1,
+            ease: 'power1.in',
+            onComplete: () => {
+                const wheelBackTween = gsap.to(wheelBack.rotation, {
+                    y: wheelFront.rotation.y + 2 * Math.PI,
+                    repeat: -1,
+                    ease: 'none',
+                    duration: 0.3
+                })
+                wheelBack.userData['tween'] = wheelBackTween;
+            }
+        })
+        wheelBack.userData['startTween'] = wheelBackStartTween;
+
+        // 车身阴影
+        const groundDetail = nameToMeshDic['groundDetail'];
+        const groundDetailStartTween = gsap.to(groundDetail.material.map.offset, {
+            x: groundDetail.material.map.offset.x + 1,
+            repeat: 0,
+            ease: 'power1.in',
+            duration: 1,
+            onComplete: () => {
+                const groundDetailTween = gsap.to(groundDetail.material.map.offset, {
+                    x: groundDetail.material.map.offset.x + 10,
+                    repeat: -1,
+                    ease: 'none',
+                    duration: 10
+                })
+                groundDetail.userData['tween'] = groundDetailTween;
+            }
+        })
+        groundDetail.userData['startTween'] = groundDetailStartTween;
+    }
+})
+
+window.addEventListener('mouseup', e => {
+    if (e.button == 0) {
+        gsap.to(camera, {
+            fov: 60,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            }
+        })
+
+        // 停止动效
+        const killTweens = ['flyLight', 'wheelFront', 'wheelBack', 'groundDetail', 'camera'];
+        killTweens.forEach(name => {
+            Object.keys(nameToMeshDic[name].userData).forEach(key => {
+                if (key.indexOf('ween') > 0) {
+                    nameToMeshDic[name].userData[key].kill();
+                }
+            })
+        })
+        // nameToMeshDic['flyLight'].userData['tween'].kill();
+        // nameToMeshDic['flyLight'].userData['opacityTween'].kill();
+        // nameToMeshDic['wheelFront'].userData['tween'].kill();
+        // nameToMeshDic['wheelFront'].userData['startTween'].kill();
+        // nameToMeshDic['wheelBack'].userData['tween'].kill();
+        // nameToMeshDic['wheelBack'].userData['startTween'].kill();
+        // nameToMeshDic['groundDetail'].userData['tween'].kill();
+        // nameToMeshDic['groundDetail'].userData['startTween'].kill();
+
+        const flyLight = nameToMeshDic['flyLight'];
+        const opacityTween = gsap.to(flyLight.material, {
+            opacity: 0,
+            repeat: 0,
+            ease: 'none',
+            duration: 0.5,
+            onComplete: () => {
+                opacityTween.kill();
+            }
+        });
+        
+        const wheelFront = nameToMeshDic['wheelFront'];
+        const wheelFrontEndTween = gsap.to(wheelFront.rotation, {
+            y: wheelFront.rotation.y + 2 * Math.PI,
+            repeat: 0,
+            duration: 0.3,
+            ease: 'power1.out',
+            onComplete: () => {
+                wheelFrontEndTween.kill();
+            }
+        });
+
+        const wheelBack = nameToMeshDic['wheelBack'];
+        const wheelBackEndTween = gsap.to(wheelBack.rotation, {
+            y: wheelFront.rotation.y + 2 * Math.PI,
+            repeat: 0,
+            duration: 0.3,
+            ease: 'power1.in',
+            onComplete: () => {
+                wheelBackEndTween.kill();
+            }
+        })
+
+        const groundDetail = nameToMeshDic['groundDetail'];
+        const groundDetailEndTween = gsap.to(groundDetail.material.map.offset, {
+            x: groundDetail.material.map.offset.x + 1,
+            repeat: 0,
+            ease: 'power1.out',
+            duration: 0.3,
+            onComplete: () => {
+                groundDetailEndTween.kill();
+            }
+        })
+    }
 })
 
 renderer.setAnimationLoop(animationLoop);
