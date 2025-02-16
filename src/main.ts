@@ -13,12 +13,14 @@ document.body.appendChild(renderer.domElement);
 
 // 创建场景
 const scene = new THREE.Scene();
+// 雾
+scene.fog = new THREE.FogExp2(0x000000, 0.005);
 
 /**  实现动态反射环境 **/ 
 // 1 创建WebGLCubeRenderTarget
 const cubeRendererTarget = new THREE.WebGLCubeRenderTarget(1024);
 // 2 将cubeRendererTarget对象作为参数传递给cubeCamera
-const cubeCamera = new THREE.CubeCamera(0.1, 500, cubeRendererTarget);
+const cubeCamera = new THREE.CubeCamera(0.1, 600, cubeRendererTarget);
 // 3 在帧循环中调用 cubeCamera.update ，每帧更新渲染结果
 // 4 cubeRendererTarget对象的texture环境材质的环境贴图通道：envMap
 let ground: any;
@@ -30,10 +32,18 @@ let ground: any;
 // boxMesh.position.set(0, 3.2, 0);
 
 // 创建相机
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 500);
-camera.position.set(0, 1, 5);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 600);
+camera.position.set(0, 1.5, 5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
+
+// 设置镜头转动最大最小角度
+controls.maxPolarAngle = 1.4;
+controls.minPolarAngle = 0.1;
+
+// 设置镜头移动动最大最小距离
+controls.maxDistance = 8;
+controls.minDistance = 6;
 
 // 保存场景模型
 const nameToMeshDic: any = { camera };
@@ -257,6 +267,16 @@ window.addEventListener('mouseup', e => {
             duration: 0.3,
             onComplete: () => {
                 groundDetailEndTween.kill();
+            }
+        })
+    }
+})
+
+window.addEventListener('mousemove', () => {
+    if (nameToMeshDic['camera']) {
+        Object.keys(nameToMeshDic['camera'].userData).forEach(key => {
+            if (key.indexOf('ween') > 0) {
+                nameToMeshDic['camera'].userData[key].kill();
             }
         })
     }
