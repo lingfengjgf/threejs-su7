@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/Addons.js';
-import { RGBELoader } from 'three/examples/jsm/Addons.js';
-import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { GLTFLoader, RGBELoader, OrbitControls, EffectComposer, RenderPass, UnrealBloomPass } from 'three/examples/jsm/Addons.js';
+
 import gsap from 'gsap';
 
 // 创建渲染器
@@ -89,6 +88,17 @@ rgbeLoader.load('sky.hdr', skyTexture => {
     scene.environment = skyTexture;
     skyTexture.mapping = THREE.EquirectangularReflectionMapping; // 全景图
 })
+
+let effectComposer: EffectComposer;
+function initEffects() {
+    effectComposer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    const unrealPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.1, 0.1);
+
+    effectComposer.addPass(renderPass);
+    effectComposer.addPass(unrealPass);
+}
+initEffects();
 
 window.addEventListener('mousedown', e => {
     if (e.button == 0) {
@@ -295,5 +305,6 @@ function animationLoop() {
         ground.visible = true;
     }
 
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera);
+    effectComposer.render();
 }
