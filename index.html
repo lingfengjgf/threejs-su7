@@ -9,10 +9,32 @@
       body {
         margin: 0px;
       }
+      .funcButtons{
+        position: absolute;
+        width: 20px;
+        height: 400px;
+        top: 20%;
+        right: 4%;
+      }
+      .funcButton{
+        float: left;
+        width: 40px;
+        line-height: 100px;
+        color: rgb(181, 181, 181);
+        display: block;
+        cursor: pointer;
+      }
+
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div class="funcButtons">
+      <div class="funcButton" id="funcButtonTunnel">隧道</div>
+      <div class="funcButton" id="funcButtonCarBody">车身</div>
+      <div class="funcButton" id="funcButtonWindage">风阻</div>
+      <div class="funcButton" id="funcButtonRadar">雷达</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

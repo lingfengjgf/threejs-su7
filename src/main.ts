@@ -101,6 +101,9 @@ function initEffects() {
 initEffects();
 
 window.addEventListener('mousedown', e => {
+    if (e.target instanceof HTMLCanvasElement) {
+        return ;
+    }
     if (e.button == 0) {
         gsap.to(camera, {
             fov: 80,
@@ -207,6 +210,9 @@ window.addEventListener('mousedown', e => {
 })
 
 window.addEventListener('mouseup', e => {
+    if (e.target instanceof HTMLCanvasElement) {
+        return ;
+    }
     if (e.button == 0) {
         gsap.to(camera, {
             fov: 60,
@@ -292,7 +298,32 @@ window.addEventListener('mousemove', () => {
     }
 })
 
+const funcButtonTunnel = document.getElementById('funcButtonTunnel');
+funcButtonTunnel?.addEventListener('click', () => {
+    console.log('funcButtonTunnel');
+})
+const funcButtonCarBody = document.getElementById('funcButtonCarBody');
+funcButtonCarBody?.addEventListener('click', () => {
+    console.log('funcButtonCarBody');
+})
+const funcButtonWindage = document.getElementById('funcButtonWindage');
+funcButtonWindage?.addEventListener('click', () => {
+    console.log('funcButtonWindage');
+})
+const funcButtonRadar = document.getElementById('funcButtonRadar');
+funcButtonRadar?.addEventListener('click', () => {
+    console.log('funcButtonRadar');
+})
+
+window.addEventListener('resize', onWindowResize);
+
 renderer.setAnimationLoop(animationLoop);
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.updateProjectionMatrix();
+}
 
 function animationLoop() {
     controls.update();
