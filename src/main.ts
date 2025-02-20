@@ -78,6 +78,16 @@ gltfLoader.load('car.glb', (gltf) => {
             // 初始状态隧道透明，按下鼠标左键展示隧道粒子
             child.material.opacity = 0;
         }
+        if (child.name == "whiteLine") {
+            const whiteLine = child;
+            const whiteLineTween = gsap.to(whiteLine.material.map.offset, {
+                y: whiteLine.material.map.offset.y + 1,
+                repeat: -1,
+                ease: 'none',
+                duration: 20
+            })
+            whiteLine.userData['tween'] = whiteLineTween;
+        }
 
     })
 })
