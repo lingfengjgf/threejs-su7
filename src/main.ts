@@ -84,7 +84,7 @@ gltfLoader.load('car.glb', (gltf) => {
                 y: whiteLine.material.map.offset.y + 1,
                 repeat: -1,
                 ease: 'none',
-                duration: 20
+                duration: 40
             })
             whiteLine.userData['tween'] = whiteLineTween;
         }
