@@ -95,6 +95,10 @@ gltfLoader.load('car.glb', (gltf) => {
         if (child.name == "widthHeightDepth") {
             child.visible = false;
         }
+        // 风阻
+        if (child.name == "windage") {
+            child.visible = false;
+        }
 
     })
 })
@@ -400,30 +404,41 @@ const funcButtonRadar = document.getElementById('funcButtonRadar');
 funcButtonRadar && btnElList.push(funcButtonRadar);
 
 funcButtonTunnel?.addEventListener('click', () => {
-    curFuncIndex = 0;
-    nameToMeshDic['widthHeightDepth'].visible = false;
-    changeBtnClassName();
+    changeBtn(0);
     console.log('funcButtonTunnel');
 })
 
 funcButtonCarBody?.addEventListener('click', () => {
-    curFuncIndex = 1;
-    nameToMeshDic['widthHeightDepth'].visible = true;
-    changeBtnClassName();
+    changeBtn(1);
     console.log('funcButtonCarBody');
 })
 
 funcButtonWindage?.addEventListener('click', () => {
-    curFuncIndex = 2;
-    nameToMeshDic['widthHeightDepth'].visible = false;
-    changeBtnClassName();
+    changeBtn(2);
+    const windage = nameToMeshDic['windage'];
+    windage.visible = true;
+    const windageTween = gsap.to(windage.material.map.offset, {
+        x: windage.material.map.offset.x + 1,
+        repeat: -1,
+        duration: 2,
+        ease: 'none'
+    })
+    windage.userData['tween'] = windageTween;
+    windage.material.opacity = 0;
+    const windageOpacityTween = gsap.to(windage.material, {
+        opacity: 1,
+        repeat: 0,
+        duration: 1,
+        ease: 'none',
+        onComplete: () => {
+            windageOpacityTween.kill();
+        }
+    })
     console.log('funcButtonWindage');
 })
 
 funcButtonRadar?.addEventListener('click', () => {
-    curFuncIndex = 3;
-    nameToMeshDic['widthHeightDepth'].visible = false;
-    changeBtnClassName();
+    changeBtn(3);
     console.log('funcButtonRadar');
 })
 
@@ -452,7 +467,20 @@ function animationLoop() {
     effectComposer.render();
 }
 
-function changeBtnClassName() {
+function changeBtn(index: number) {
+    curFuncIndex = index;
+    nameToMeshDic['widthHeightDepth'].visible = index === 1;
+
+    // 清除风阻动效
+    if (index != 2) {
+        const windageTween = nameToMeshDic['windage'].userData['tween'];
+        nameToMeshDic['windage'].visible = false;
+        if (windageTween) {
+            windageTween.kill();
+        }
+        nameToMeshDic['windage']
+    }
+
     btnElList.forEach((el, i) => {
         if (i === curFuncIndex) {
             el.classList.add("activeBtn");
