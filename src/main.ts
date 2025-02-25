@@ -99,6 +99,10 @@ gltfLoader.load('car.glb', (gltf) => {
         if (child.name == "windage") {
             child.visible = false;
         }
+        // 车身边线
+        if (child.name == "outLine") {
+            child.visible = false;
+        }
 
     })
 })
@@ -263,6 +267,33 @@ window.addEventListener('mousedown', e => {
             }
         })
     }
+
+    if (curFuncIndex === 2) {
+        const cameraFovTween = gsap.to(camera, {
+            fov: 80,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            },
+            onComplete: () => {
+                cameraFovTween.kill();
+            }
+        })
+        const outLine = nameToMeshDic['outLine'];
+        outLine.visible = true;
+        const outLineTween = gsap.to(outLine.material.map.offset, {
+            x: outLine.material.map.offset.x + 1,
+            repeat: -1,
+            duration: 0.25,
+            ease: 'none',
+            onStart: () => {
+                nameToMeshDic['mainCar'].visible = false;
+            }
+        })
+        outLine.userData['tween'] = outLineTween;
+    }
 })
 
 window.addEventListener('mouseup', e => {
@@ -375,6 +406,29 @@ window.addEventListener('mouseup', e => {
             },
             onComplete: () => {
                 cameraFovTween.kill();
+            }
+        })
+    }
+
+    if (curFuncIndex === 2) {
+        const outLine = nameToMeshDic['outLine'];
+        outLine.visible = false;
+        if (outLine.userData['tween']) {
+            outLine.userData['tween'].kill();
+        }
+        const cameraFovTween = gsap.to(camera, {
+            fov: 60,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            },
+            onComplete: () => {
+                cameraFovTween.kill();
+            },
+            onStart: () => {
+                nameToMeshDic['mainCar'].visible = true;
             }
         })
     }
