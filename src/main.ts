@@ -289,10 +289,24 @@ window.addEventListener('mousedown', e => {
             duration: 0.25,
             ease: 'none',
             onStart: () => {
-                nameToMeshDic['mainCar'].visible = false;
+                // nameToMeshDic['mainCar'].visible = false;
+                nameToMeshDic['mainCarBody'].visible = false;
+                nameToMeshDic['wheelFront'].visible = false;
+                nameToMeshDic['wheelBack'].visible = false;
             }
         })
         outLine.userData['tween'] = outLineTween;
+
+        // 车壳裁剪
+        const mainCarShell = nameToMeshDic['mainCarShell'];
+        mainCarShell.userData['tween'] && mainCarShell.userData['tween'].kill();
+        const mainCarShellTween = gsap.to(mainCarShell.material, {
+            alphaTest: 1,
+            duration: 1,
+            repeat: 0,
+            ease: 'none'
+        })
+        mainCarShell.userData['tween'] = mainCarShellTween;
     }
 })
 
@@ -428,9 +442,22 @@ window.addEventListener('mouseup', e => {
                 cameraFovTween.kill();
             },
             onStart: () => {
-                nameToMeshDic['mainCar'].visible = true;
+                // nameToMeshDic['mainCar'].visible = true;
+                nameToMeshDic['mainCarBody'].visible = true;
+                nameToMeshDic['wheelFront'].visible = true;
+                nameToMeshDic['wheelBack'].visible = true;
             }
         })
+
+        const mainCarShell = nameToMeshDic['mainCarShell'];
+        mainCarShell.userData['tween'] && mainCarShell.userData['tween'].kill();
+        const mainCarShellTween = gsap.to(mainCarShell.material, {
+            alphaTest: 0,
+            duration: 1,
+            repeat: 0,
+            ease: 'none'
+        })
+        mainCarShell.userData['tween'] = mainCarShellTween;
     }
 })
 
