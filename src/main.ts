@@ -49,6 +49,8 @@ controls.minDistance = 6;
 // 保存场景模型
 const nameToMeshDic: any = { camera };
 
+let clipPlane01: THREE.Plane, clipPlane02: THREE.Plane, clipSpeed = 0.6;
+
 const gltfLoader = new GLTFLoader();
 gltfLoader.load('car.glb', (gltf) => {
     scene.add(gltf.scene);
@@ -102,6 +104,25 @@ gltfLoader.load('car.glb', (gltf) => {
         // 车身边线
         if (child.name == "outLine") {
             child.visible = false;
+        }
+
+        if (child.name == 'mainCarClip') {
+            clipPlane01 = new THREE.Plane(new THREE.Vector3(1, 0, 0), -4);
+            clipPlane02 = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 4.05);
+
+            // const clipPlane01Helper = new THREE.PlaneHelper(clipPlane01, 6, 0xff0000);
+            // scene.add(clipPlane01Helper);
+            // const clipPlane02Helper = new THREE.PlaneHelper(clipPlane02, 6, 0x00ff00);
+            // scene.add(clipPlane02Helper);
+
+            const clipMaterial = new THREE.MeshBasicMaterial({
+                side: THREE.DoubleSide,
+                clippingPlanes: [clipPlane01, clipPlane02]
+            });
+
+            child.material = clipMaterial;
+
+            renderer.localClippingEnabled = true;
         }
 
     })
@@ -297,16 +318,46 @@ window.addEventListener('mousedown', e => {
         })
         outLine.userData['tween'] = outLineTween;
 
+        const killTweens = ['mainCarShell', 'mainCarClip'];
+        killTweens.forEach(name => {
+            Object.keys(nameToMeshDic[name].userData).forEach(key => {
+                if (key.indexOf('ween') > 0) {
+                    nameToMeshDic[name].userData[key].kill();
+                }
+            })
+        })
+
         // 车壳裁剪
         const mainCarShell = nameToMeshDic['mainCarShell'];
-        mainCarShell.userData['tween'] && mainCarShell.userData['tween'].kill();
         const mainCarShellTween = gsap.to(mainCarShell.material, {
             alphaTest: 1,
-            duration: 1,
+            duration: clipSpeed,
             repeat: 0,
             ease: 'none'
         })
         mainCarShell.userData['tween'] = mainCarShellTween;
+
+        clipPlane01.constant = -4;
+        const clipPlane01Tween = gsap.to(clipPlane01, {
+            constant: 3.6,
+            duration: clipSpeed,
+            repeat: 0,
+            ease: 'none',
+            onComplete: () => {
+                nameToMeshDic['windage'].visible = false;
+                nameToMeshDic['mainCarBody'].visible = false;
+            }
+        })
+        nameToMeshDic['mainCarClip'].userData['clipPlane01Tween'] = clipPlane01Tween;
+
+        clipPlane02.constant = 4.05;
+        const clipPlane02Tween = gsap.to(clipPlane02, {
+            constant: -3.55,
+            duration: clipSpeed,
+            repeat: 0,
+            ease: 'none'
+        })
+        nameToMeshDic['mainCarClip'].userData['clipPlane02Tween'] = clipPlane02Tween;
     }
 })
 
@@ -425,11 +476,17 @@ window.addEventListener('mouseup', e => {
     }
 
     if (curFuncIndex === 2) {
+        const killTweens = ['outLine', 'mainCarShell', 'mainCarClip'];
+        killTweens.forEach(name => {
+            Object.keys(nameToMeshDic[name].userData).forEach(key => {
+                if (key.indexOf('ween') > 0) {
+                    nameToMeshDic[name].userData[key].kill();
+                }
+            })
+        })
+
         const outLine = nameToMeshDic['outLine'];
         outLine.visible = false;
-        if (outLine.userData['tween']) {
-            outLine.userData['tween'].kill();
-        }
         const cameraFovTween = gsap.to(camera, {
             fov: 60,
             repeat: 0,
@@ -441,23 +498,38 @@ window.addEventListener('mouseup', e => {
             onComplete: () => {
                 cameraFovTween.kill();
             },
-            onStart: () => {
-                // nameToMeshDic['mainCar'].visible = true;
+        })
+
+        const mainCarShell = nameToMeshDic['mainCarShell'];
+        const mainCarShellTween = gsap.to(mainCarShell.material, {
+            alphaTest: 0,
+            duration: clipSpeed,
+            repeat: 0,
+            ease: 'none'
+        })
+        mainCarShell.userData['tween'] = mainCarShellTween;
+
+        const clipPlane01Tween = gsap.to(clipPlane01, {
+            constant: -4,
+            duration: clipSpeed,
+            repeat: 0,
+            ease: 'none',
+            onComplete: () => {
+                nameToMeshDic['windage'].visible = true;
                 nameToMeshDic['mainCarBody'].visible = true;
                 nameToMeshDic['wheelFront'].visible = true;
                 nameToMeshDic['wheelBack'].visible = true;
             }
         })
+        nameToMeshDic['mainCarClip'].userData['clipPlane01Tween'] = clipPlane01Tween;
 
-        const mainCarShell = nameToMeshDic['mainCarShell'];
-        mainCarShell.userData['tween'] && mainCarShell.userData['tween'].kill();
-        const mainCarShellTween = gsap.to(mainCarShell.material, {
-            alphaTest: 0,
-            duration: 1,
+        const clipPlane02Tween = gsap.to(clipPlane02, {
+            constant: 4.05,
+            duration: clipSpeed,
             repeat: 0,
             ease: 'none'
         })
-        mainCarShell.userData['tween'] = mainCarShellTween;
+        nameToMeshDic['mainCarClip'].userData['clipPlane02Tween'] = clipPlane02Tween;
     }
 })
 
