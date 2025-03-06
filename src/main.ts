@@ -52,6 +52,7 @@ const nameToMeshDic: any = { camera };
 let clipPlane01: THREE.Plane, clipPlane02: THREE.Plane, clipSpeed = 0.6;
 
 let radarVertexArray: THREE.Vector3[] = [];
+let radarMeshArray: THREE.Mesh[] = [];
 const ver3Zero = new THREE.Vector3(0, 0, 0);
 
 const gltfLoader = new GLTFLoader();
@@ -130,23 +131,12 @@ gltfLoader.load('car.glb', (gltf) => {
 
         // 雷达
         if (child.name == "radar") {
-            console.log(child);
             const positionAttribute = child.geometry.getAttribute('position');
 
             for (let i = 0; i < positionAttribute.count; i++) {
                 const ver3 = new THREE.Vector3();
                 ver3.fromBufferAttribute(positionAttribute, i);
                 radarVertexArray.push(ver3);
-            }
-            console.log(radarVertexArray);
-
-            for (let i = 0; i < radarVertexArray.length; i++) {
-                const boxGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
-                const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
-                const boxMesh = new THREE.Mesh(boxGeo, boxMat);
-                boxMesh.position.copy(radarVertexArray[i]);
-                scene.add(boxMesh);
-                boxMesh.lookAt(ver3Zero);
             }
         }
     })
@@ -382,6 +372,42 @@ window.addEventListener('mousedown', e => {
             ease: 'none'
         })
         nameToMeshDic['mainCarClip'].userData['clipPlane02Tween'] = clipPlane02Tween;
+    }
+
+    if (curFuncIndex === 3) {
+        if (!radarMeshArray.length) {
+            const boxGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
+            for (let i = 0; i < radarVertexArray.length; i++) {
+                const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+                boxMesh.position.copy(radarVertexArray[i]);
+                scene.add(boxMesh);
+                radarMeshArray.push(boxMesh);
+                boxMesh.lookAt(ver3Zero);
+
+                // boxMesh.userData['orginPos'] = boxMesh.position.clone(); // 车身雷达起始位置
+                boxMesh.translateZ(-6);
+                boxMesh.userData['targetPos'] = boxMesh.position.clone(); // 车身雷达终点位置
+                boxMesh.translateZ(6);
+            }
+
+        }
+
+        for (const radarMesh of radarMeshArray) {
+            if (!radarMesh.userData['isTweening']) {
+                gsap.to(radarMesh.position, {
+                    x: radarMesh.userData['targetPos'].x,
+                    y: radarMesh.userData['targetPos'].y,
+                    z: radarMesh.userData['targetPos'].z,
+                    duration: 2,
+                    repeat: -1,
+                    ease: 'none',
+                    onStart: () => {
+                        radarMesh.userData['isTweening'] = true;
+                    }
+                })
+            }
+        }
     }
 })
 
