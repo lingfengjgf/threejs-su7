@@ -23,6 +23,7 @@ const cubeCamera = new THREE.CubeCamera(0.1, 600, cubeRendererTarget);
 // 3 在帧循环中调用 cubeCamera.update ，每帧更新渲染结果
 // 4 cubeRendererTarget对象的texture环境材质的环境贴图通道：envMap
 let ground: any;
+let ground_func4: any;
 
 let curFuncIndex = 0;
 
@@ -53,7 +54,9 @@ let clipPlane01: THREE.Plane, clipPlane02: THREE.Plane, clipSpeed = 0.6;
 
 let radarVertexArray: THREE.Vector3[] = [];
 let radarMeshArray: THREE.Mesh[] = [];
-const ver3Zero = new THREE.Vector3(0, 0, 0);
+const ver3RadarLookAtTarget = new THREE.Vector3(0, 1.2, 0);
+let radarGroup = new THREE.Group();
+let isLeftMouseDown: Boolean;
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.load('car.glb', (gltf) => {
@@ -139,6 +142,11 @@ gltfLoader.load('car.glb', (gltf) => {
                 radarVertexArray.push(ver3);
             }
         }
+        // 雷达路面
+        if (child.name == "ground_func4") {
+            child.visible = false;
+            ground_func4 = child;
+        }
     })
 })
 
@@ -160,9 +168,12 @@ function initEffects() {
 }
 initEffects();
 
-window.addEventListener('mousedown', e => {
+window.addEventListener('mousedown', (e: MouseEvent) => {
     if (!(e.target instanceof HTMLCanvasElement)) {
         return ;
+    }
+    if (e.button == 0) {
+        isLeftMouseDown = true;
     }
     if (curFuncIndex === 0) {
         if (e.button == 0) {
@@ -252,16 +263,16 @@ window.addEventListener('mousedown', e => {
             })
             wheelBack.userData['startTween'] = wheelBackStartTween;
     
-            // 车身阴影
+            // 车身阴影 路面
             const groundDetail = nameToMeshDic['groundDetail'];
             const groundDetailStartTween = gsap.to(groundDetail.material.map.offset, {
-                x: groundDetail.material.map.offset.x + 1,
+                x: groundDetail.material.map.offset.x - 1,
                 repeat: 0,
                 ease: 'power1.in',
                 duration: 1,
                 onComplete: () => {
                     const groundDetailTween = gsap.to(groundDetail.material.map.offset, {
-                        x: groundDetail.material.map.offset.x + 10,
+                        x: groundDetail.material.map.offset.x - 10,
                         repeat: -1,
                         ease: 'none',
                         duration: 10
@@ -375,45 +386,120 @@ window.addEventListener('mousedown', e => {
     }
 
     if (curFuncIndex === 3) {
-        if (!radarMeshArray.length) {
-            const boxGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
-            for (let i = 0; i < radarVertexArray.length; i++) {
-                const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
-                const boxMesh = new THREE.Mesh(boxGeo, boxMat);
-                boxMesh.position.copy(radarVertexArray[i]);
-                scene.add(boxMesh);
-                radarMeshArray.push(boxMesh);
-                boxMesh.lookAt(ver3Zero);
-
-                // boxMesh.userData['orginPos'] = boxMesh.position.clone(); // 车身雷达起始位置
-                boxMesh.translateZ(-6);
-                boxMesh.userData['targetPos'] = boxMesh.position.clone(); // 车身雷达终点位置
-                boxMesh.translateZ(6);
+        radarGroup.visible = true;
+        const cameraFovTween = gsap.to(camera, {
+            fov: 80,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            },
+            onComplete: () => {
+                cameraFovTween.kill();
             }
+        })
+        if (!radarMeshArray.length) {
+            const boxGeo = new THREE.BoxGeometry(0.05, 0.05, 0.2);
+            scene.add(radarGroup);
+            radarGroup.position.set(0, 1, 0);
+            for (let i = 0; i < 6; i++) {
+                for (let radarVertex of radarVertexArray) {
+                    const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                    const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+                    boxMesh.position.copy(radarVertex);
+                    boxMesh.visible = false;
+                    radarGroup.add(boxMesh);
+                    // scene.add(boxMesh);
+                    radarMeshArray.push(boxMesh);
+                    boxMesh.lookAt(ver3RadarLookAtTarget);
+    
+                    // boxMesh.userData['originPos'] = boxMesh.position.clone(); // 车身雷达起始位置
+                    boxMesh.translateZ(-6);
+                    boxMesh.userData['targetPos'] = boxMesh.position.clone(); // 车身雷达终点位置
+                    boxMesh.translateZ(6);
 
+                    boxMesh.userData['delay'] = i < 3 ? i / 2 : (i + 1) / 2;
+                }
+    
+                for (const radarMesh of radarMeshArray) {
+                    gsap.to(radarMesh.position, {
+                        x: radarMesh.userData['targetPos'].x,
+                        y: radarMesh.userData['targetPos'].y,
+                        z: radarMesh.userData['targetPos'].z,
+                        duration: 2,
+                        repeat: -1,
+                        ease: 'none',
+                        delay: radarMesh.userData['delay'],
+                        onStart: () => {
+                            radarMesh.userData['isTweening'] = true;
+                            radarMesh.visible = true;
+                        }
+                    })
+                }
+
+            }
         }
 
-        for (const radarMesh of radarMeshArray) {
-            if (!radarMesh.userData['isTweening']) {
-                gsap.to(radarMesh.position, {
-                    x: radarMesh.userData['targetPos'].x,
-                    y: radarMesh.userData['targetPos'].y,
-                    z: radarMesh.userData['targetPos'].z,
-                    duration: 2,
+        nameToMeshDic['groundDetail'].visible = false;
+        nameToMeshDic['rectAreaLight'].visible = false;
+        
+        const ground_func4 = nameToMeshDic['ground_func4'];
+        ground_func4.visible = true;
+        const groundFunc4Tween = gsap.to(ground_func4.material.map.offset, {
+            x: ground_func4.material.map.offset.x - 1,
+            repeat: -1,
+            duration: 1.2,
+            ease: 'none'
+        })
+        ground_func4.userData['tween'] = groundFunc4Tween;
+
+        // 前车轮滚动
+        const wheelFront = nameToMeshDic['wheelFront'];
+        const wheelFrontStartTween = gsap.to(wheelFront.rotation, {
+            y: wheelFront.rotation.y + 4 * Math.PI,
+            repeat: 0,
+            duration: 1,
+            ease: 'power1.in',
+            onComplete: () => {
+                const wheelFrontTween = gsap.to(wheelFront.rotation, {
+                    y: wheelFront.rotation.y + 2 * Math.PI,
                     repeat: -1,
                     ease: 'none',
-                    onStart: () => {
-                        radarMesh.userData['isTweening'] = true;
-                    }
+                    duration: 0.3
                 })
+                wheelFront.userData['tween'] = wheelFrontTween;
             }
-        }
+        })
+        wheelFront.userData['startTween'] = wheelFrontStartTween;
+
+        // 后车轮滚动
+        const wheelBack = nameToMeshDic['wheelBack'];
+        const wheelBackStartTween = gsap.to(wheelBack.rotation, {
+            y: wheelFront.rotation.y + 4 * Math.PI,
+            repeat: 0,
+            duration: 1,
+            ease: 'power1.in',
+            onComplete: () => {
+                const wheelBackTween = gsap.to(wheelBack.rotation, {
+                    y: wheelFront.rotation.y + 2 * Math.PI,
+                    repeat: -1,
+                    ease: 'none',
+                    duration: 0.3
+                })
+                wheelBack.userData['tween'] = wheelBackTween;
+            }
+        })
+        wheelBack.userData['startTween'] = wheelBackStartTween;
     }
 })
 
-window.addEventListener('mouseup', e => {
+window.addEventListener('mouseup', (e: MouseEvent) => {
     if (!(e.target instanceof HTMLCanvasElement)) {
         return ;
+    }
+    if (e.button == 0) {
+        isLeftMouseDown = false;
     }
     if (curFuncIndex === 0) {
         if (e.button == 0) {
@@ -483,7 +569,7 @@ window.addEventListener('mouseup', e => {
     
             const groundDetail = nameToMeshDic['groundDetail'];
             const groundDetailEndTween = gsap.to(groundDetail.material.map.offset, {
-                x: groundDetail.material.map.offset.x + 1,
+                x: groundDetail.material.map.offset.x - 1,
                 repeat: 0,
                 ease: 'power1.out',
                 duration: 0.3,
@@ -581,6 +667,55 @@ window.addEventListener('mouseup', e => {
         })
         nameToMeshDic['mainCarClip'].userData['clipPlane02Tween'] = clipPlane02Tween;
     }
+
+    if (curFuncIndex === 3) {
+        const cameraFovTween = gsap.to(camera, {
+            fov: 60,
+            repeat: 0,
+            ease: 'power1.inOut',
+            duration: 0.3,
+            onUpdate: () => {
+                camera.updateProjectionMatrix();
+            },
+            onComplete: () => {
+                cameraFovTween.kill();
+            }
+        })
+        radarGroup.visible = false;
+        nameToMeshDic['groundDetail'].visible = true;
+        nameToMeshDic['rectAreaLight'].visible = true;
+
+        const killTweens = ['wheelFront', 'wheelBack', 'ground_func4'];
+        killTweens.forEach(name => {
+            Object.keys(nameToMeshDic[name].userData).forEach(key => {
+                if (key.indexOf('ween') > 0) {
+                    nameToMeshDic[name].userData[key].kill();
+                }
+            })
+        })
+
+        const wheelFront = nameToMeshDic['wheelFront'];
+        const wheelFrontEndTween = gsap.to(wheelFront.rotation, {
+            y: wheelFront.rotation.y + 2 * Math.PI,
+            repeat: 0,
+            duration: 0.3,
+            ease: 'power1.out',
+            onComplete: () => {
+                wheelFrontEndTween.kill();
+            }
+        });
+
+        const wheelBack = nameToMeshDic['wheelBack'];
+        const wheelBackEndTween = gsap.to(wheelBack.rotation, {
+            y: wheelFront.rotation.y + 2 * Math.PI,
+            repeat: 0,
+            duration: 0.3,
+            ease: 'power1.in',
+            onComplete: () => {
+                wheelBackEndTween.kill();
+            }
+        })
+    }
 })
 
 window.addEventListener('mousemove', e => {
@@ -660,10 +795,14 @@ function animationLoop() {
     
     if (ground) {
         ground.visible = false;
+        ground_func4.visible = false;
         cubeCamera.position.copy(camera.position);
         cubeCamera.position.y = -cubeCamera.position.y;
         cubeCamera.update(renderer, scene);
         ground.visible = true;
+        if (curFuncIndex == 3 && isLeftMouseDown) {
+            ground_func4.visible = true;
+        }
     }
 
     // renderer.render(scene, camera);
