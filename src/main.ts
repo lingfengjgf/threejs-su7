@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader, RGBELoader, OrbitControls, EffectComposer, RenderPass, UnrealBloomPass } from 'three/examples/jsm/Addons.js';
+import { GLTFLoader, RGBELoader, OrbitControls, EffectComposer, RenderPass, UnrealBloomPass, DRACOLoader } from 'three/examples/jsm/Addons.js';
 
 import gsap from 'gsap';
 
@@ -57,8 +57,16 @@ let radarMeshArray: THREE.Mesh[] = [];
 const ver3RadarLookAtTarget = new THREE.Vector3(0, 1.2, 0);
 let radarGroup = new THREE.Group();
 let isLeftMouseDown: Boolean;
+let mainCar: THREE.Object3D;
+let otherCar01: THREE.Object3D;
+let otherCar02: THREE.Object3D;
 
 const gltfLoader = new GLTFLoader();
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('libs/draco/');
+gltfLoader.setDRACOLoader(dracoLoader);
+
 gltfLoader.load('car.glb', (gltf) => {
     scene.add(gltf.scene);
 
@@ -76,6 +84,7 @@ gltfLoader.load('car.glb', (gltf) => {
             ground = child;
         }
         if (child.name == "mainCar") {
+            mainCar = child;
             // 使车身变亮
             child.traverse((item: any) => {
                 if (item.type == "Mesh") {
@@ -134,6 +143,7 @@ gltfLoader.load('car.glb', (gltf) => {
 
         // 雷达
         if (child.name == "radar") {
+            child.visible = false;
             const positionAttribute = child.geometry.getAttribute('position');
 
             for (let i = 0; i < positionAttribute.count; i++) {
@@ -146,6 +156,13 @@ gltfLoader.load('car.glb', (gltf) => {
         if (child.name == "ground_func4") {
             child.visible = false;
             ground_func4 = child;
+        }
+        if (child.name == "otherCar01" || child.name == "otherCar02") {
+            child.visible = false;
+            child.userData['originPos'] = child.position.clone();
+
+            child.name == "otherCar01" && (otherCar01 = child);
+            child.name == "otherCar02" && (otherCar02 = child);
         }
     })
 })
@@ -190,6 +207,7 @@ window.addEventListener('mousedown', (e: MouseEvent) => {
                 }
             })
     
+            nameToMeshDic['rectAreaLight'].visible = false;
             // 隧道粒子
             const flyLight = nameToMeshDic['flyLight'];
             const flyLightTween = gsap.to(flyLight.material.map.offset, {
@@ -405,7 +423,7 @@ window.addEventListener('mousedown', (e: MouseEvent) => {
             radarGroup.position.set(0, 1, 0);
             for (let i = 0; i < 6; i++) {
                 for (let radarVertex of radarVertexArray) {
-                    const boxMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                    const boxMat = new THREE.MeshBasicMaterial({color: 0xf8f8f8, depthTest: false});
                     const boxMesh = new THREE.Mesh(boxGeo, boxMat);
                     boxMesh.position.copy(radarVertex);
                     boxMesh.visible = false;
@@ -415,9 +433,9 @@ window.addEventListener('mousedown', (e: MouseEvent) => {
                     boxMesh.lookAt(ver3RadarLookAtTarget);
     
                     // boxMesh.userData['originPos'] = boxMesh.position.clone(); // 车身雷达起始位置
-                    boxMesh.translateZ(-6);
+                    boxMesh.translateZ(-8);
                     boxMesh.userData['targetPos'] = boxMesh.position.clone(); // 车身雷达终点位置
-                    boxMesh.translateZ(6);
+                    boxMesh.translateZ(8);
 
                     boxMesh.userData['delay'] = i < 3 ? i / 2 : (i + 1) / 2;
                 }
@@ -442,7 +460,6 @@ window.addEventListener('mousedown', (e: MouseEvent) => {
         }
 
         nameToMeshDic['groundDetail'].visible = false;
-        nameToMeshDic['rectAreaLight'].visible = false;
         
         const ground_func4 = nameToMeshDic['ground_func4'];
         ground_func4.visible = true;
@@ -491,6 +508,29 @@ window.addEventListener('mousedown', (e: MouseEvent) => {
             }
         })
         wheelBack.userData['startTween'] = wheelBackStartTween;
+
+        const otherCar01 = nameToMeshDic['otherCar01'];
+        const otherCar02 = nameToMeshDic['otherCar02'];
+
+        otherCar01.visible = true;
+        otherCar02.visible = true;
+
+        otherCar01.position.copy(otherCar01.userData['originPos']);
+        const otherCar01Tween = gsap.to(otherCar01.position, {
+            x: -50,
+            duration: 5,
+            repeat: -1,
+            ease: 'none'
+        })
+        otherCar01.userData['tween'] = otherCar01Tween;
+        otherCar02.position.copy(otherCar02.userData['originPos']);
+        const otherCar02Tween = gsap.to(otherCar02.position, {
+            x: 40,
+            duration: 8,
+            repeat: -1,
+            ease: 'none'
+        })
+        otherCar02.userData['tween'] = otherCar02Tween;
     }
 })
 
@@ -503,6 +543,7 @@ window.addEventListener('mouseup', (e: MouseEvent) => {
     }
     if (curFuncIndex === 0) {
         if (e.button == 0) {
+            nameToMeshDic['rectAreaLight'].visible = true;
             const cameraFovTween = gsap.to(camera, {
                 fov: 60,
                 repeat: 0,
@@ -683,9 +724,8 @@ window.addEventListener('mouseup', (e: MouseEvent) => {
         })
         radarGroup.visible = false;
         nameToMeshDic['groundDetail'].visible = true;
-        nameToMeshDic['rectAreaLight'].visible = true;
 
-        const killTweens = ['wheelFront', 'wheelBack', 'ground_func4'];
+        const killTweens = ['wheelFront', 'wheelBack', 'ground_func4', 'otherCar01', 'otherCar02'];
         killTweens.forEach(name => {
             Object.keys(nameToMeshDic[name].userData).forEach(key => {
                 if (key.indexOf('ween') > 0) {
@@ -715,6 +755,9 @@ window.addEventListener('mouseup', (e: MouseEvent) => {
                 wheelBackEndTween.kill();
             }
         })
+
+        nameToMeshDic['otherCar01'].visible = false;
+        nameToMeshDic['otherCar02'].visible = false;
     }
 })
 
@@ -790,6 +833,9 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 }
 
+
+let distanceTmp01 = 100;
+let distanceTmp02 = 100;
 function animationLoop() {
     controls.update();
     
@@ -802,6 +848,24 @@ function animationLoop() {
         ground.visible = true;
         if (curFuncIndex == 3 && isLeftMouseDown) {
             ground_func4.visible = true;
+        }
+    }
+
+    // 雷达光点变色
+    if (mainCar && otherCar01 && otherCar02) {
+        for (const mesh of radarMeshArray) {
+            // const worldPos = mesh.getWorldPosition(mesh.position);
+            distanceTmp01 = otherCar01.position.distanceTo(mesh.position);
+            distanceTmp02 = otherCar02.position.distanceTo(mesh.position);
+            if (distanceTmp01 < 3 || distanceTmp02 < 3) {
+                // @ts-ignore
+                mesh.material.color.setHex(0x00ff00);
+                mesh.scale.setZ(4 - (distanceTmp01 < 3 ? distanceTmp01 : distanceTmp02))
+            } else {
+                // @ts-ignore
+                mesh.material.color.setHex(0xf8f8f8);
+                mesh.scale.setZ(1);
+            }
         }
     }
 
@@ -822,6 +886,8 @@ function changeBtn(index: number) {
         }
         nameToMeshDic['windage']
     }
+
+    nameToMeshDic['rectAreaLight'].visible = index < 2;
 
     btnElList.forEach((el, i) => {
         if (i === curFuncIndex) {
